@@ -47,27 +47,29 @@
             position: sticky;
             top: 0;
             z-index: 1030;
-            background: #101010;
+            background: #141716 !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
             transition: background-color 0.25s ease, box-shadow 0.25s ease;
         }
 
         .foresta-header--overlay {
-            position: fixed;
+            position: sticky;
             top: 0;
             left: 0;
             right: 0;
-            background: transparent;
+            background: #141716 !important;
         }
 
         .foresta-header--overlay .foresta-topbar,
         .foresta-header--overlay .foresta-navbar {
-            border-bottom-color: transparent;
+            border-bottom-color: rgba(255, 255, 255, 0.1);
         }
 
         .foresta-header--scrolled {
-            background: rgba(14, 15, 14, 0.55) !important;
-            backdrop-filter: blur(10px);
-            box-shadow: none;
+            background: #141716 !important;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.5) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.14) !important;
         }
 
         input[type="date"]::-webkit-calendar-picker-indicator {
@@ -132,18 +134,23 @@
         }
 
         .foresta-nav-link {
-            padding: 8px 16px !important;
-            color: rgba(255, 255, 255, 0.85) !important;
+            padding: 8px 18px !important;
+            color: #f8fafc !important;
             font-size: 0.95rem;
             font-weight: 700;
             border-radius: 999px;
             transition: color 0.2s ease, background-color 0.2s ease;
         }
 
-        .foresta-nav-link:hover,
+        .foresta-nav-link:hover {
+            color: #ffffff !important;
+            background: rgba(255, 255, 255, 0.14) !important;
+        }
+
         .foresta-nav-link.active {
-            color: var(--foresta-lime) !important;
-            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff !important;
+            background: #16a34a !important;
+            box-shadow: 0 2px 10px rgba(22, 163, 74, 0.45);
         }
 
         .foresta-dropdown-menu {
@@ -219,22 +226,23 @@
         .foresta-user-trigger {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
-            border: 0;
+            gap: 7px;
+            padding: 7px 16px;
+            border: 1px solid rgba(74, 222, 128, 0.4);
             border-radius: 999px;
-            background: transparent;
-            color: var(--foresta-lime) !important;
-            font-size: 1.05rem;
-            font-weight: 700;
+            background: rgba(22, 163, 74, 0.16);
+            color: #4ade80 !important;
+            font-size: 0.95rem;
+            font-weight: 800;
             text-decoration: none;
-            transition: opacity 0.2s ease;
+            transition: all 0.2s ease;
         }
 
         .foresta-user-trigger:hover,
         .foresta-user-trigger:focus {
-            opacity: 0.88;
-            color: var(--foresta-lime) !important;
+            background: rgba(22, 163, 74, 0.3);
+            color: #ffffff !important;
+            border-color: rgba(74, 222, 128, 0.7);
         }
 
         .foresta-user-trigger::after {
