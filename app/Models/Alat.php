@@ -35,6 +35,10 @@ class Alat extends Model
 
     public function getGambarUrlAttribute(): string
     {
+        if ($this->gambar && (str_starts_with($this->gambar, 'http://') || str_starts_with($this->gambar, 'https://'))) {
+            return $this->gambar;
+        }
+
         if ($this->gambar && (file_exists(public_path('uploads/alat/'.$this->gambar)) || file_exists('/tmp/uploads/alat/'.$this->gambar))) {
             return asset('uploads/alat/'.$this->gambar);
         }
@@ -57,20 +61,13 @@ class Alat extends Model
         }
 
         $nama = strtolower((string) $this->nama_alat);
-        if (str_contains($nama, 'tenda') && str_contains($nama, '4')) {
-            return $presetByFile['tenda_dome_4p.jpg'];
+
+        // Aksesoris & pencahayaan dicek terlebih dahulu sebelum tenda utama
+        if (str_contains($nama, 'lampu') || str_contains($nama, 'lentera')) {
+            return $presetByFile['lampu_tenda.jpg'];
         }
-        if (str_contains($nama, 'tenda')) {
-            return $presetByFile['tenda_dome_2p.jpg'];
-        }
-        if (str_contains($nama, 'carrier') || str_contains($nama, 'tas')) {
-            return str_contains($nama, '60') ? $presetByFile['carrier_60l.jpg'] : $presetByFile['carrier_45l.jpg'];
-        }
-        if (str_contains($nama, 'sleeping')) {
-            return $presetByFile['sleeping_bag.jpg'];
-        }
-        if (str_contains($nama, 'matras')) {
-            return $presetByFile['matras_foil.jpg'];
+        if (str_contains($nama, 'headlamp') || str_contains($nama, 'senter')) {
+            return $presetByFile['headlamp_led.jpg'];
         }
         if (str_contains($nama, 'kompor')) {
             return $presetByFile['kompor_portable.jpg'];
@@ -78,11 +75,20 @@ class Alat extends Model
         if (str_contains($nama, 'nesting') || str_contains($nama, 'masak')) {
             return $presetByFile['nesting_set.jpg'];
         }
-        if (str_contains($nama, 'headlamp') || str_contains($nama, 'senter')) {
-            return $presetByFile['headlamp_led.jpg'];
+        if (str_contains($nama, 'sleeping')) {
+            return $presetByFile['sleeping_bag.jpg'];
         }
-        if (str_contains($nama, 'lampu') || str_contains($nama, 'lentera')) {
-            return $presetByFile['lampu_tenda.jpg'];
+        if (str_contains($nama, 'matras')) {
+            return $presetByFile['matras_foil.jpg'];
+        }
+        if (str_contains($nama, 'carrier') || str_contains($nama, 'tas')) {
+            return str_contains($nama, '60') ? $presetByFile['carrier_60l.jpg'] : $presetByFile['carrier_45l.jpg'];
+        }
+        if (str_contains($nama, 'tenda') && str_contains($nama, '4')) {
+            return $presetByFile['tenda_dome_4p.jpg'];
+        }
+        if (str_contains($nama, 'tenda')) {
+            return $presetByFile['tenda_dome_2p.jpg'];
         }
 
         return asset('images/default-camp.svg');
