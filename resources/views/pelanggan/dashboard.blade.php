@@ -722,7 +722,9 @@
                         payload.jumlah_bayar = parseInt(checkedRadio.dataset.amount || '0', 10);
                     }
 
+                    const originalHtml = button.innerHTML;
                     button.disabled = true;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Memproses Pembayaran...';
 
                     try {
                         const response = await fetch(url, {
@@ -744,24 +746,29 @@
                         if (!data.simulation && window.snap && data.token) {
                             window.snap.pay(data.token, {
                                 onSuccess: async function () {
+                                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Memverifikasi Pembayaran...';
                                     await confirmSettlement(confirmUrl, data.order_id, data.gross_amount, tipeBayar);
                                     window.location.reload();
                                 },
                                 onPending: async function () {
+                                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Memverifikasi Pembayaran...';
                                     await confirmSettlement(confirmUrl, data.order_id, data.gross_amount, tipeBayar);
                                     window.location.reload();
                                 },
                                 onError: function () {
                                     button.disabled = false;
+                                    button.innerHTML = originalHtml;
                                 },
                                 onClose: function () {
                                     button.disabled = false;
+                                    button.innerHTML = originalHtml;
                                 }
                             });
                         } else if (!data.simulation && data.redirect_url) {
                             window.location.href = data.redirect_url;
                         } else if (window.CampSewaMidtrans) {
                             button.disabled = false;
+                            button.innerHTML = originalHtml;
                             window.CampSewaMidtrans.openModal(data, confirmUrl, tipeBayar, async function () {
                                 await confirmSettlement(confirmUrl, data.order_id, data.gross_amount, tipeBayar);
                             });
@@ -772,6 +779,7 @@
                             alertBox.textContent = error.message;
                         }
                         button.disabled = false;
+                        button.innerHTML = originalHtml;
                     }
                 });
             });
