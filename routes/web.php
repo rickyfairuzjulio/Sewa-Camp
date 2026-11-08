@@ -112,3 +112,27 @@ Route::middleware(['auth', 'role:admin,petugas'])->prefix('admin')->name('admin.
     Route::get('/laporan/pembayaran', [LaporanController::class, 'laporanPembayaran'])->name('laporan.pembayaran');
     Route::get('/laporan/belum-kembali', [LaporanController::class, 'laporanBelumKembali'])->name('laporan.belum_kembali');
 });
+
+Route::get('/run-migration', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        $migrateOutput = \Illuminate\Support\Facades\Artisan::output();
+
+        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+        $seedOutput = \Illuminate\Support\Facades\Artisan::output();
+
+        return "<div style='font-family:sans-serif;padding:20px;max-width:800px;margin:auto;'>
+            <h2 style='color:green;'>Migration & Seeder Berhasil!</h2>
+            <p>Database TiDB sekarang sudah siap dan terisi data.</p>
+            <p><a href='/' style='display:inline-block;padding:10px 20px;background:#10b981;color:white;text-decoration:none;border-radius:5px;'>Buka Beranda CampSewa &rarr;</a></p>
+            <h3>Log Output:</h3>
+            <pre style='background:#f4f4f4;padding:15px;border-radius:5px;'>{$migrateOutput}\n{$seedOutput}</pre>
+        </div>";
+    } catch (\Throwable $e) {
+        return "<div style='font-family:sans-serif;padding:20px;max-width:800px;margin:auto;'>
+            <h2 style='color:red;'>Gagal Migrasi:</h2>
+            <pre style='background:#fee;padding:15px;border-radius:5px;'>{$e->getMessage()}\n{$e->getTraceAsString()}</pre>
+        </div>";
+    }
+});
+
