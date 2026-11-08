@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -58,7 +59,7 @@ class PublicHomepageTest extends TestCase
         $guestRentalResponse = $this->get(route('public.sewa', ['alat_id' => $equipmentId]));
         $guestRentalResponse->assertRedirect(route('login'));
 
-        $user = \App\Models\User::factory()->create(['role' => 'pelanggan']);
+        $user = User::factory()->create(['role' => 'pelanggan']);
         $rentalResponse = $this->actingAs($user)->get(route('public.sewa', ['alat_id' => $equipmentId]));
 
         $detailResponse->assertOk();
@@ -76,7 +77,7 @@ class PublicHomepageTest extends TestCase
         $categoryId = $this->createCategory('Tenda');
         $equipmentId = $this->createEquipment($categoryId, 'Tenda Dome Dua Orang', 25000);
         $startDate = now()->addDay();
-        $user = \App\Models\User::factory()->create(['role' => 'pelanggan']);
+        $user = User::factory()->create(['role' => 'pelanggan']);
 
         $response = $this->actingAs($user)->post(route('public.sewa.simpan'), [
             'nama' => 'Rani Pratama',
@@ -104,9 +105,43 @@ class PublicHomepageTest extends TestCase
         $successResponse->assertSee('Rp 100.000');
     }
 
+    public function test_rental_request_supports_json_ajax_for_seamless_midtrans_checkout(): void
+    {
+        $categoryId = $this->createCategory('Carrier');
+        $equipmentId = $this->createEquipment($categoryId, 'Carrier Osprey 60L', 35000);
+        $startDate = now()->addDay();
+        $user = User::factory()->create(['role' => 'pelanggan']);
+
+        $response = $this->actingAs($user)->postJson(route('public.sewa.simpan'), [
+            'nama' => 'Budi Santoso',
+            'no_hp' => '081298765432',
+            'alamat' => 'Semarang Tengah',
+            'no_identitas' => 'ID-CAMP-002',
+            'skema_bayar' => 'dp',
+            'tgl_sewa' => $startDate->toDateString(),
+            'tgl_kembali_rencana' => $startDate->copy()->addDays(2)->toDateString(),
+            'items' => [
+                ['id_alat' => $equipmentId, 'jumlah' => 1],
+            ],
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'skema_bayar' => 'dp',
+            'total_biaya' => 70000,
+        ]);
+        $response->assertJsonStructure([
+            'id_sewa',
+            'redirect_url',
+            'token_url',
+            'confirm_url',
+        ]);
+    }
+
     public function test_rental_request_returns_validation_errors_for_missing_required_fields(): void
     {
-        $user = \App\Models\User::factory()->create(['role' => 'pelanggan']);
+        $user = User::factory()->create(['role' => 'pelanggan']);
 
         $response = $this->actingAs($user)->from(route('public.sewa'))
             ->post(route('public.sewa.simpan'), []);

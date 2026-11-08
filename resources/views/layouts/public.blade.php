@@ -1621,10 +1621,13 @@
                     newBtn.addEventListener('click', async function () {
                         newBtn.disabled = true;
                         newBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Memverifikasi Pembayaran...';
+                        const currentHref = window.location.href;
                         if (typeof onDone === 'function') {
                             await onDone();
                         }
-                        window.location.reload();
+                        if (window.location.href === currentHref) {
+                            window.location.reload();
+                        }
                     });
                 }
 

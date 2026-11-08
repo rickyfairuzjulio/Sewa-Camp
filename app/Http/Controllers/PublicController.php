@@ -221,7 +221,21 @@ class PublicController extends Controller
 
             $penyewaan->update(['total_biaya' => $totalBiaya]);
 
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Permintaan penyewaan Anda berhasil dibuat dengan nomor transaksi #'.$penyewaan->id_sewa.'!',
+                    'id_sewa' => $penyewaan->id_sewa,
+                    'redirect_url' => route('public.sewa.sukses', $penyewaan->id_sewa),
+                    'token_url' => route('public.sewa.midtrans.token', $penyewaan->id_sewa),
+                    'confirm_url' => route('public.sewa.midtrans.confirm', $penyewaan->id_sewa),
+                    'skema_bayar' => request('skema_bayar', 'penuh'),
+                    'total_biaya' => $totalBiaya,
+                ]);
+            }
+
             return redirect()->route('public.sewa.sukses', $penyewaan->id_sewa)
+                ->with('auto_midtrans', true)
                 ->with('skema_bayar', request('skema_bayar', 'penuh'))
                 ->with('success', 'Permintaan penyewaan Anda berhasil dibuat dengan nomor transaksi #'.$penyewaan->id_sewa.'!');
         });

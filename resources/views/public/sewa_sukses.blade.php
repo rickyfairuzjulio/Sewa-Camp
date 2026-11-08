@@ -359,6 +359,15 @@
                     payBtn.innerHTML = originalHtml;
                 }
             });
+
+            @if(session('auto_midtrans'))
+            // Otomatis luncurkan sesi pembayaran jika diarahkan langsung dari form sewa
+            setTimeout(() => {
+                if (payBtn && !payBtn.disabled) {
+                    payBtn.click();
+                }
+            }, 350);
+            @endif
         }
     })();
 </script>

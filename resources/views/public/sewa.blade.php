@@ -206,8 +206,11 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-foresta-lime w-100 py-3 fs-6 justify-content-center">
-                        <i class="bi bi-check2-circle fs-5"></i> Kirim Pengajuan Sewa &amp; Lanjut Pembayaran
+                    <div id="checkout-error-alert" class="alert alert-danger d-none rounded-4 small py-2 mb-3"></div>
+
+                    <button type="submit" id="btn-submit-checkout" class="btn-foresta-lime w-100 py-3 fs-6 justify-content-center">
+                        <i class="bi bi-check2-circle fs-5" id="btn-submit-checkout-icon"></i>
+                        <span id="btn-submit-checkout-text">Kirim Pengajuan Sewa &amp; Lanjut Pembayaran</span>
                     </button>
                 </form>
             </div>
@@ -279,6 +282,7 @@
 @endsection
 
 @section('scripts')
+<script src="{{ config('services.midtrans.snap_js_url', 'https://app.sandbox.midtrans.com/snap/snap.js') }}" data-client-key="{{ config('services.midtrans.client_key') }}"></script>
 <script>
     (function () {
         const rentalStartDate = document.getElementById('rental-start');
@@ -454,6 +458,166 @@
 
             rentalItems.addEventListener('input', updateSummary);
             updateSummary();
+        }
+
+        const checkoutForm = document.getElementById('rental-checkout-form');
+        const submitBtn = document.getElementById('btn-submit-checkout');
+        const submitBtnText = document.getElementById('btn-submit-checkout-text');
+        const errorAlert = document.getElementById('checkout-error-alert');
+
+        async function confirmClientSettlement(confirmUrl, orderId, grossAmount, tipeBayar) {
+            try {
+                await fetch(confirmUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        order_id: orderId,
+                        gross_amount: grossAmount,
+                        tipe_bayar: tipeBayar
+                    })
+                });
+            } catch (e) {
+                // Ignore fallback error
+            }
+        }
+
+        if (checkoutForm && submitBtn) {
+            checkoutForm.addEventListener('submit', async function (e) {
+                // 1. Cek validasi form HTML5
+                if (!checkoutForm.checkValidity()) {
+                    e.preventDefault();
+                    checkoutForm.reportValidity();
+                    const invalidInput = checkoutForm.querySelector(':invalid');
+                    if (invalidInput) {
+                        invalidInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        invalidInput.focus();
+                    }
+                    if (errorAlert) {
+                        errorAlert.textContent = 'Mohon lengkapi seluruh data identitas, jadwal tanggal sewa, dan pilihan alat outdoor.';
+                        errorAlert.classList.remove('d-none');
+                    }
+                    return;
+                }
+
+                // 2. Pastikan minimal 1 alat terpilih
+                const rows = checkoutForm.querySelectorAll('.rental-item-row');
+                let hasValidTool = false;
+                rows.forEach(function (r) {
+                    const sel = r.querySelector('select');
+                    if (sel && sel.value) hasValidTool = true;
+                });
+
+                if (!hasValidTool) {
+                    e.preventDefault();
+                    if (errorAlert) {
+                        errorAlert.textContent = 'Silakan pilih minimal satu peralatan outdoor yang ingin disewa.';
+                        errorAlert.classList.remove('d-none');
+                    }
+                    return;
+                }
+
+                e.preventDefault();
+                if (errorAlert) errorAlert.classList.add('d-none');
+
+                const originalBtnHtml = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Menyimpan data & menyiapkan Midtrans...';
+
+                try {
+                    const formData = new FormData(checkoutForm);
+                    const res = await fetch(checkoutForm.action, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: formData
+                    });
+
+                    const resData = await res.json();
+
+                    if (!res.ok || !resData.success) {
+                        let errMsg = resData.message || 'Terjadi kendala saat memproses formulir.';
+                        if (resData.errors) {
+                            errMsg = Object.values(resData.errors).flat().join('<br>');
+                        }
+                        throw new Error(errMsg);
+                    }
+
+                    if (window.CampSewaCart) {
+                        window.CampSewaCart.saveCart([]);
+                    }
+
+                    const redirectUrl = resData.redirect_url;
+                    const tokenUrl = resData.token_url;
+                    const confirmUrl = resData.confirm_url;
+                    const skemaBayar = resData.skema_bayar || 'penuh';
+
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Membuka Pembayaran Midtrans...';
+
+                    // Panggil token Snap Midtrans
+                    const tokenRes = await fetch(tokenUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        },
+                        body: JSON.stringify({ tipe_bayar: skemaBayar })
+                    });
+
+                    const snapData = await tokenRes.json();
+                    const snapToken = snapData.token || snapData.snap_token;
+
+                    if (!tokenRes.ok || !snapToken) {
+                        window.location.href = redirectUrl;
+                        return;
+                    }
+
+                    if (!snapData.simulation && window.snap) {
+                        window.snap.pay(snapToken, {
+                            onSuccess: async function () {
+                                await confirmClientSettlement(confirmUrl, snapData.order_id, snapData.gross_amount, skemaBayar);
+                                window.location.href = redirectUrl;
+                            },
+                            onPending: async function () {
+                                await confirmClientSettlement(confirmUrl, snapData.order_id, snapData.gross_amount, skemaBayar);
+                                window.location.href = redirectUrl;
+                            },
+                            onError: function () {
+                                window.location.href = redirectUrl;
+                            },
+                            onClose: function () {
+                                window.location.href = redirectUrl;
+                            }
+                        });
+                    } else if (!snapData.simulation && snapData.redirect_url) {
+                        window.location.href = snapData.redirect_url;
+                    } else if (window.CampSewaMidtrans) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnHtml;
+                        window.CampSewaMidtrans.openModal(snapData, confirmUrl, skemaBayar, async function () {
+                            await confirmClientSettlement(confirmUrl, snapData.order_id, snapData.gross_amount, skemaBayar);
+                            window.location.href = redirectUrl;
+                        });
+                    } else {
+                        window.location.href = redirectUrl;
+                    }
+
+                } catch (err) {
+                    if (errorAlert) {
+                        errorAlert.innerHTML = err.message || 'Terjadi kesalahan saat memproses formulir sewa.';
+                        errorAlert.classList.remove('d-none');
+                        errorAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnHtml;
+                }
+            });
         }
     })();
 </script>
