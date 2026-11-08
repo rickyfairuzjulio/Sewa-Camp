@@ -10,13 +10,24 @@ use App\Models\Penyewaan;
 use App\Models\Petugas;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class PublicController extends Controller
 {
     public function beranda()
     {
+        if (! Schema::hasTable('kategori_alat')) {
+            try {
+                Artisan::call('migrate', ['--force' => true]);
+                Artisan::call('db:seed', ['--force' => true]);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
         $kategori = KategoriAlat::withCount('alat')->get();
         $alatUnggulan = Alat::with('kategori')
             ->where('stok', '>', 0)
