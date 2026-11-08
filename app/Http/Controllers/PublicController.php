@@ -11,6 +11,7 @@ use App\Models\Petugas;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PublicController extends Controller
 {
@@ -201,7 +202,9 @@ class PublicController extends Controller
                 $alat = Alat::lockForUpdate()->findOrFail($item['id_alat']);
 
                 if ($alat->stok < $item['jumlah']) {
-                    throw new \Exception("Stok alat '{$alat->nama_alat}' tidak mencukupi (Tersisa: {$alat->stok}).");
+                    throw ValidationException::withMessages([
+                        'items' => "Stok alat '{$alat->nama_alat}' tidak mencukupi (Tersisa: {$alat->stok}).",
+                    ]);
                 }
 
                 $hargaSatuan = $alat->harga_sewa_per_hari;

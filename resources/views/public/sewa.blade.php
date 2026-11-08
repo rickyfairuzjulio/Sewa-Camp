@@ -81,7 +81,7 @@
         @endphp
         <div class="row g-4 align-items-start">
             <div class="col-lg-8">
-                <form id="rental-checkout-form" action="{{ route('public.sewa.simpan') }}" method="POST" class="foresta-checkout-card">
+                <form id="rental-checkout-form" action="{{ route('public.sewa.simpan') }}" method="POST" class="foresta-checkout-card" novalidate>
                     @csrf
                     <div class="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-4 border-bottom">
                         <div>
@@ -487,40 +487,55 @@
 
         if (checkoutForm && submitBtn) {
             checkoutForm.addEventListener('submit', async function (e) {
-                // 1. Cek validasi form HTML5
-                if (!checkoutForm.checkValidity()) {
-                    e.preventDefault();
-                    checkoutForm.reportValidity();
-                    const invalidInput = checkoutForm.querySelector(':invalid');
-                    if (invalidInput) {
-                        invalidInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        invalidInput.focus();
-                    }
-                    if (errorAlert) {
-                        errorAlert.textContent = 'Mohon lengkapi seluruh data identitas, jadwal tanggal sewa, dan pilihan alat outdoor.';
-                        errorAlert.classList.remove('d-none');
-                    }
-                    return;
-                }
-
-                // 2. Pastikan minimal 1 alat terpilih
-                const rows = checkoutForm.querySelectorAll('.rental-item-row');
-                let hasValidTool = false;
-                rows.forEach(function (r) {
-                    const sel = r.querySelector('select');
-                    if (sel && sel.value) hasValidTool = true;
-                });
-
-                if (!hasValidTool) {
-                    e.preventDefault();
-                    if (errorAlert) {
-                        errorAlert.textContent = 'Silakan pilih minimal satu peralatan outdoor yang ingin disewa.';
-                        errorAlert.classList.remove('d-none');
-                    }
-                    return;
-                }
-
                 e.preventDefault();
+                checkoutForm.querySelectorAll('.is-invalid').forEach((el) => el.classList.remove('is-invalid'));
+
+                // Validasi sisi klien dengan pesan yang jelas (ditampilkan tepat di atas tombol)
+                const problems = [];
+                const markInvalid = (el, message) => {
+                    if (el) el.classList.add('is-invalid');
+                    problems.push(message);
+                };
+                const val = (id) => (document.getElementById(id)?.value || '').trim();
+                const today = @json(now()->toDateString());
+
+                if (!val('rental-name')) markInvalid(document.getElementById('rental-name'), 'Nama lengkap belum diisi.');
+                if (!val('rental-phone')) markInvalid(document.getElementById('rental-phone'), 'Nomor HP / WhatsApp belum diisi.');
+                else if (val('rental-phone').length > 15) markInvalid(document.getElementById('rental-phone'), 'Nomor HP maksimal 15 karakter.');
+                if (!val('rental-identity')) markInvalid(document.getElementById('rental-identity'), 'Nomor identitas (KTP/KTM/SIM) belum diisi.');
+                else if (val('rental-identity').length > 20) markInvalid(document.getElementById('rental-identity'), 'Nomor identitas maksimal 20 karakter.');
+
+                const startVal = val('rental-start');
+                const endVal = val('rental-end');
+                if (!startVal) markInvalid(rentalStartDate, 'Tanggal ambil belum dipilih.');
+                else if (startVal < today) markInvalid(rentalStartDate, 'Tanggal ambil tidak boleh sebelum hari ini.');
+                if (!endVal) markInvalid(rentalEndDate, 'Tanggal pengembalian belum dipilih.');
+                else if (startVal && endVal <= startVal) markInvalid(rentalEndDate, 'Tanggal pengembalian harus setelah tanggal ambil.');
+
+                let hasValidTool = false;
+                checkoutForm.querySelectorAll('.rental-item-row').forEach(function (r) {
+                    const sel = r.querySelector('select');
+                    const qty = r.querySelector('input[type="number"]');
+                    if (sel && sel.value) {
+                        hasValidTool = true;
+                        const stock = Number(sel.selectedOptions[0]?.dataset.stock || 0);
+                        const q = Number(qty?.value || 0);
+                        if (q < 1) markInvalid(qty, 'Jumlah unit minimal 1.');
+                        else if (stock && q > stock) markInvalid(qty, `Jumlah ${sel.selectedOptions[0].dataset.name} melebihi stok (tersedia ${stock}).`);
+                    } else if (sel) {
+                        sel.classList.add('is-invalid');
+                    }
+                });
+                if (!hasValidTool) problems.push('Pilih minimal satu peralatan yang ingin disewa.');
+
+                if (problems.length) {
+                    if (errorAlert) {
+                        errorAlert.innerHTML = '<strong>Data belum lengkap:</strong><ul class="mb-0 ps-3">' + problems.map((p) => `<li>${p}</li>`).join('') + '</ul>';
+                        errorAlert.classList.remove('d-none');
+                    }
+                    return;
+                }
+
                 if (errorAlert) errorAlert.classList.add('d-none');
 
                 const originalBtnHtml = submitBtn.innerHTML;
@@ -538,7 +553,19 @@
                         body: formData
                     });
 
-                    const resData = await res.json();
+                    let resData = {};
+                    try {
+                        resData = await res.json();
+                    } catch (parseError) {
+                        resData = {};
+                    }
+
+                    if (res.status === 419) {
+                        throw new Error('Sesi halaman sudah kedaluwarsa. Silakan muat ulang halaman (F5) lalu coba lagi.');
+                    }
+                    if (res.status === 401) {
+                        throw new Error('Silakan login terlebih dahulu sebelum menyewa.');
+                    }
 
                     if (!res.ok || !resData.success) {
                         let errMsg = resData.message || 'Terjadi kendala saat memproses formulir.';
