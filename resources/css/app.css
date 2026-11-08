@@ -1,0 +1,15 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../../resources/**/*.blade.php';
+@source '../../resources/**/*.js';
+
+@theme {
+    --font-sans: 'Urbanist', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --color-camp-lime: #70f46d;
+    --color-camp-lime-hover: #5ce159;
+    --color-camp-dark: #101010;
+    --color-camp-card: #ffffff;
+    --color-camp-border: #e4e6e8;
+}
