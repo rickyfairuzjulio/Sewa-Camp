@@ -113,6 +113,18 @@ Route::middleware(['auth', 'role:admin,petugas'])->prefix('admin')->name('admin.
     Route::get('/laporan/belum-kembali', [LaporanController::class, 'laporanBelumKembali'])->name('laporan.belum_kembali');
 });
 
+Route::get('/uploads/alat/{filename}', function ($filename) {
+    $path = public_path('uploads/alat/'.$filename);
+    if (file_exists($path)) {
+        return response()->file($path);
+    }
+    $tmpPath = '/tmp/uploads/alat/'.$filename;
+    if (file_exists($tmpPath)) {
+        return response()->file($tmpPath);
+    }
+    abort(404);
+});
+
 Route::get('/run-migration', function () {
     try {
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);

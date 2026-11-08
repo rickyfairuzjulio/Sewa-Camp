@@ -35,7 +35,7 @@ class Alat extends Model
 
     public function getGambarUrlAttribute(): string
     {
-        if ($this->gambar && file_exists(public_path('uploads/alat/'.$this->gambar))) {
+        if ($this->gambar && (file_exists(public_path('uploads/alat/'.$this->gambar)) || file_exists('/tmp/uploads/alat/'.$this->gambar))) {
             return asset('uploads/alat/'.$this->gambar);
         }
 

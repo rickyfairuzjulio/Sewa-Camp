@@ -104,12 +104,27 @@ class AlatController extends Controller
         if ($request->hasFile('gambar')) {
             $file = $request->file('gambar');
             $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $file->getClientOriginalName());
-            $destination = public_path('uploads/alat');
-            if (!File::isDirectory($destination)) {
-                File::makeDirectory($destination, 0755, true, true);
+
+            try {
+                $destination = public_path('uploads/alat');
+                if (!File::isDirectory($destination)) {
+                    File::makeDirectory($destination, 0755, true, true);
+                }
+                $file->move($destination, $filename);
+                $validated['gambar'] = $filename;
+            } catch (\Throwable $e) {
+                // Fallback untuk environment serverless read-only seperti Vercel
+                try {
+                    $tmpDestination = '/tmp/uploads/alat';
+                    if (!File::isDirectory($tmpDestination)) {
+                        File::makeDirectory($tmpDestination, 0755, true, true);
+                    }
+                    $file->move($tmpDestination, $filename);
+                    $validated['gambar'] = $filename;
+                } catch (\Throwable $e2) {
+                    report($e2);
+                }
             }
-            $file->move($destination, $filename);
-            $validated['gambar'] = $filename;
         }
 
         Alat::create($validated);
@@ -141,18 +156,33 @@ class AlatController extends Controller
         if ($request->hasFile('gambar')) {
             $file = $request->file('gambar');
             $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $file->getClientOriginalName());
-            $destination = public_path('uploads/alat');
-            if (!File::isDirectory($destination)) {
-                File::makeDirectory($destination, 0755, true, true);
-            }
-            $file->move($destination, $filename);
 
-            // Hapus gambar lama jika ada dan bukan gambar bawaan seeder
-            if ($alat->gambar && File::exists(public_path('uploads/alat/' . $alat->gambar)) && !str_starts_with($alat->gambar, 'tenda_') && !str_starts_with($alat->gambar, 'carrier_')) {
-                File::delete(public_path('uploads/alat/' . $alat->gambar));
-            }
+            try {
+                $destination = public_path('uploads/alat');
+                if (!File::isDirectory($destination)) {
+                    File::makeDirectory($destination, 0755, true, true);
+                }
+                $file->move($destination, $filename);
 
-            $validated['gambar'] = $filename;
+                // Hapus gambar lama jika ada dan bukan gambar bawaan seeder
+                if ($alat->gambar && File::exists(public_path('uploads/alat/'.$alat->gambar)) && ! str_starts_with($alat->gambar, 'tenda_') && ! str_starts_with($alat->gambar, 'carrier_')) {
+                    File::delete(public_path('uploads/alat/'.$alat->gambar));
+                }
+
+                $validated['gambar'] = $filename;
+            } catch (\Throwable $e) {
+                // Fallback untuk environment serverless read-only seperti Vercel
+                try {
+                    $tmpDestination = '/tmp/uploads/alat';
+                    if (!File::isDirectory($tmpDestination)) {
+                        File::makeDirectory($tmpDestination, 0755, true, true);
+                    }
+                    $file->move($tmpDestination, $filename);
+                    $validated['gambar'] = $filename;
+                } catch (\Throwable $e2) {
+                    report($e2);
+                }
+            }
         }
 
         $alat->update($validated);
