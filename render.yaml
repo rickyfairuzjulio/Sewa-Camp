@@ -18,3 +18,4 @@ services:
         value: true
       - key: SEED_DATABASE
         value: true
+

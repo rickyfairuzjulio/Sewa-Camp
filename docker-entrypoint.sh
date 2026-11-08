@@ -27,3 +27,4 @@ php artisan view:cache || true
 
 echo "==> Menjalankan Apache pada port ${PORT}..."
 exec apache2-foreground
+
