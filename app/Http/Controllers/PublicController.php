@@ -11,6 +11,7 @@ use App\Models\Petugas;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -19,28 +20,26 @@ class PublicController extends Controller
 {
     public function beranda()
     {
-        if (! Schema::hasTable('kategori_alat')) {
-            try {
-                Artisan::call('migrate', ['--force' => true]);
-                Artisan::call('db:seed', ['--force' => true]);
-            } catch (\Throwable $e) {
-                report($e);
-            }
-        }
+        $kategori = Cache::remember('home_kategori', 180, function () {
+            return KategoriAlat::withCount('alat')->get();
+        });
 
-        $kategori = KategoriAlat::withCount('alat')->get();
-        $alatUnggulan = Alat::with('kategori')
-            ->where('stok', '>', 0)
-            ->latest('id_alat')
-            ->take(12)
-            ->get();
+        $alatUnggulan = Cache::remember('home_alat_unggulan', 180, function () {
+            return Alat::with('kategori')
+                ->where('stok', '>', 0)
+                ->latest('id_alat')
+                ->take(12)
+                ->get();
+        });
 
-        $stats = [
-            'total_alat' => Alat::count(),
-            'total_stok' => Alat::sum('stok'),
-            'total_pelanggan' => Pelanggan::count(),
-            'total_sewa' => Penyewaan::count(),
-        ];
+        $stats = Cache::remember('home_stats', 180, function () {
+            return [
+                'total_alat' => Alat::count(),
+                'total_stok' => Alat::sum('stok'),
+                'total_pelanggan' => Pelanggan::count(),
+                'total_sewa' => Penyewaan::count(),
+            ];
+        });
 
         return view('public.beranda', compact('kategori', 'alatUnggulan', 'stats'));
     }

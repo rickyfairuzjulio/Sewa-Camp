@@ -821,18 +821,20 @@
 </head>
 <body>
     @php
-        $navCategories = collect();
-        $totalAlatHeader = 10;
-        try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('kategori_alat')) {
-                $navCategories = \App\Models\KategoriAlat::orderBy('id_kategori')->get();
+        $navCategories = \Illuminate\Support\Facades\Cache::remember('nav_categories', 1800, function () {
+            try {
+                return \App\Models\KategoriAlat::orderBy('id_kategori')->get();
+            } catch (\Throwable $e) {
+                return collect();
             }
-            if (\Illuminate\Support\Facades\Schema::hasTable('alat')) {
-                $totalAlatHeader = max(1, \App\Models\Alat::count());
+        });
+        $totalAlatHeader = \Illuminate\Support\Facades\Cache::remember('nav_total_alat', 1800, function () {
+            try {
+                return max(1, \App\Models\Alat::count());
+            } catch (\Throwable $e) {
+                return 10;
             }
-        } catch (\Throwable $e) {
-            $navCategories = collect();
-        }
+        });
     @endphp
 
     <header id="forestaHeader" class="foresta-header {{ request()->routeIs('public.beranda') ? 'foresta-header--overlay' : '' }}">
